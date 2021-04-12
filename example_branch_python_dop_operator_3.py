@@ -31,6 +31,14 @@ args = {
     'depends_on_past': True,
 }
 
+dag = DAG(
+    dag_id='example_branch_dop_operator_v3',
+    schedule_interval='*/1 * * * *',
+    start_date=days_ago(2),
+    default_args=args,
+    tags=['example'],
+)
+
 
 def should_run(**kwargs):
     """
@@ -51,19 +59,12 @@ def should_run(**kwargs):
         return "dummy_task_2"
 
 
-with DAG(
-    dag_id='example_branch_dop_operator_v3',
-    schedule_interval='*/1 * * * *',
-    start_date=days_ago(2),
-    default_args=args,
-    tags=['example'],
-) as dag:
+cond = BranchPythonOperator(
+    task_id='condition',
+    python_callable=should_run,
+    dag=dag,
+)
 
-    cond = BranchPythonOperator(
-        task_id='condition',
-        python_callable=should_run,
-    )
-
-    dummy_task_1 = DummyOperator(task_id='dummy_task_1')
-    dummy_task_2 = DummyOperator(task_id='dummy_task_2')
-    cond >> [dummy_task_1, dummy_task_2]
+dummy_task_1 = DummyOperator(task_id='dummy_task_1', dag=dag)
+dummy_task_2 = DummyOperator(task_id='dummy_task_2', dag=dag)
+cond >> [dummy_task_1, dummy_task_2]

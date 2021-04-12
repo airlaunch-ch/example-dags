@@ -20,12 +20,22 @@
 
 import os
 from datetime import timedelta
-from textwrap import dedent
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
+
+dag = DAG(
+    "example_passing_params_via_test_command",
+    default_args={
+        "owner": "airflow",
+    },
+    schedule_interval='*/1 * * * *',
+    start_date=days_ago(1),
+    dagrun_timeout=timedelta(minutes=4),
+    tags=['example'],
+)
 
 
 def my_py_command(test_mode, params):
@@ -42,8 +52,28 @@ def my_py_command(test_mode, params):
             )
         )
     # Print out the value of "miff", passed in below via the Python Operator
-    print(f" 'miff' was passed in via task params = {params['miff']}")
+    print(" 'miff' was passed in via task params = {}".format(params["miff"]))
     return 1
+
+
+my_templated_command = """
+    echo " 'foo was passed in via Airflow CLI Test command with value {{ params.foo }} "
+    echo " 'miff was passed in via BashOperator with value {{ params.miff }} "
+"""
+
+run_this = PythonOperator(
+    task_id='run_this',
+    python_callable=my_py_command,
+    params={"miff": "agg"},
+    dag=dag,
+)
+
+also_run_this = BashOperator(
+    task_id='also_run_this',
+    bash_command=my_templated_command,
+    params={"miff": "agg"},
+    dag=dag,
+)
 
 
 def print_env_vars(test_mode):
@@ -53,40 +83,10 @@ def print_env_vars(test_mode):
     --env-vars '{"foo":"bar"}'`
     """
     if test_mode:
-        print(f"foo={os.environ.get('foo')}")
-        print(f"AIRFLOW_TEST_MODE={os.environ.get('AIRFLOW_TEST_MODE')}")
+        print("foo={}".format(os.environ.get('foo')))
+        print("AIRFLOW_TEST_MODE={}".format(os.environ.get('AIRFLOW_TEST_MODE')))
 
 
-with DAG(
-    "example_passing_params_via_test_command",
-    default_args={
-        "owner": "airflow",
-    },
-    schedule_interval='*/1 * * * *',
-    start_date=days_ago(1),
-    dagrun_timeout=timedelta(minutes=4),
-    tags=['example'],
-) as dag:
+env_var_test_task = PythonOperator(task_id='env_var_test_task', python_callable=print_env_vars, dag=dag)
 
-    my_templated_command = dedent(
-        """
-        echo " 'foo was passed in via Airflow CLI Test command with value {{ params.foo }} "
-        echo " 'miff was passed in via BashOperator with value {{ params.miff }} "
-    """
-    )
-
-    run_this = PythonOperator(
-        task_id='run_this',
-        python_callable=my_py_command,
-        params={"miff": "agg"},
-    )
-
-    also_run_this = BashOperator(
-        task_id='also_run_this',
-        bash_command=my_templated_command,
-        params={"miff": "agg"},
-    )
-
-    env_var_test_task = PythonOperator(task_id='env_var_test_task', python_callable=print_env_vars)
-
-    run_this >> also_run_this
+run_this >> also_run_this
