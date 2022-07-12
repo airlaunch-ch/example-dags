@@ -42,7 +42,6 @@ dag = DAG(
 run_this_last = DummyOperator(
     task_id='run_this_last',
     dag=dag,
-    queue='local'
 )
 
 # [START howto_operator_bash]
@@ -50,6 +49,7 @@ run_this = BashOperator(
     task_id='run_after_loop',
     bash_command='echo 1',
     dag=dag,
+    queue='local',
 )
 # [END howto_operator_bash]
 
