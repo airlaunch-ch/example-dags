@@ -37,7 +37,7 @@ default_args = {
 
 
 # [START instantiate_dag]
-@dag(default_args=default_args, schedule_interval=None, start_date=days_ago(2), tags=['example'], queue='local')
+@dag(default_args=default_args, schedule_interval=None, start_date=days_ago(2), tags=['example'])
 def tutorial_taskflow_api_etl_local():
     """
     ### TaskFlow API Tutorial Documentation
@@ -51,7 +51,7 @@ def tutorial_taskflow_api_etl_local():
 
     # [START extract]
     @task()
-    def extract():
+    def extract(queue='local'):
         """
         #### Extract task
         A simple Extract task to get data ready for the rest of the data
