@@ -50,8 +50,8 @@ def tutorial_taskflow_api_etl_local():
     # [END instantiate_dag]
 
     # [START extract]
-    @task()
-    def extract(queue='local'):
+    @task(queue='local')
+    def extract():
         """
         #### Extract task
         A simple Extract task to get data ready for the rest of the data
